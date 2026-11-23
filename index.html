@@ -12,6 +12,7 @@
       --gold: #d4af37;
       --green: #00ff87;
       --red: #ff4d4d;
+      --blue: #38bdf8;
       --text: #f3f6fa;
       --muted: #94a3b8;
     }
@@ -29,6 +30,7 @@
     .btn-start { background: rgba(0, 255, 135, 0.14); border-color: var(--green); color: var(--green); }
     .btn-stop { background: rgba(255, 77, 77, 0.14); border-color: var(--red); color: #ff8080; }
     .btn-gold { background: var(--gold); color: #000; border-color: var(--gold); }
+    .btn-push { background: rgba(56, 189, 248, 0.14); border-color: var(--blue); color: #7dd3fc; }
     .job-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 0; border-bottom: 1px solid var(--border); }
     .job-row:last-child { border-bottom: none; }
     .badge-on { color: var(--green); font-weight: 700; font-size: 0.82rem; }
@@ -72,7 +74,10 @@
     <div class="card">
       <div class="bar" style="margin-bottom: 6px;">
         <strong>📋 Deine 3 Live-Jobs</strong>
-        <button onclick="refreshStatus()">🔄 Aktualisieren</button>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button class="btn-push" onclick="sendTestPush()">📲 Test-Push</button>
+          <button onclick="refreshStatus()">🔄 Aktualisieren</button>
+        </div>
       </div>
       <div id="jobsContainer">Lade Jobs...</div>
     </div>
@@ -104,6 +109,26 @@
 
     function setMsg(text) {
       document.getElementById("statusMsg").textContent = text;
+    }
+
+    async function sendTestPush() {
+      const c = getConfig();
+      setMsg("Sende Test-Push an push_subscriptions_msv...");
+      try {
+        const res = await fetch(c.workerUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "testPush" })
+        });
+        const out = await res.json();
+        if (!res.ok) {
+          setMsg("Test-Push Fehler (" + res.status + "): " + (out.response || out.error || ""));
+          return;
+        }
+        setMsg("Test-Push gesendet (HTTP " + out.status + ") – bitte Handy prüfen.");
+      } catch (err) {
+        setMsg("Netzwerkfehler beim Test-Push: " + err.message);
+      }
     }
 
     async function refreshStatus() {

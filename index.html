@@ -3,13 +3,23 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Cronjob-Steuerung (120 Min. Auto-Aus)</title>
+  <meta name="theme-color" content="#0b0f17" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Cron-Steuerung" />
+  <title>Cronjob-Steuerung — Webmanagement Jürgen Schützendorf</title>
+
+  <!-- Handy-Icon (JS mit Timer-Badge) für Favicon & Home-Bildschirm -->
+  <link id="svg-favicon" rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Cdefs%3E%3ClinearGradient id='bg' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%23162238'/%3E%3Cstop offset='100%25' stop-color='%23090d16'/%3E%3C/linearGradient%3E%3ClinearGradient id='gold' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%23f3d478'/%3E%3Cstop offset='100%25' stop-color='%23b88d1e'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='128' height='128' rx='28' fill='url(%23bg)'/%3E%3Crect x='5' y='5' width='118' height='118' rx='24' fill='none' stroke='url(%23gold)' stroke-width='3'/%3E%3Ctext x='64' y='80' text-anchor='middle' font-family='Georgia, serif' font-weight='bold' font-size='56' fill='url(%23gold)'%3EJS%3C/text%3E%3Ccircle cx='98' cy='30' r='15' fill='%2300ff87' stroke='%23090d16' stroke-width='3'/%3E%3Cpath d='M98 22v8l5 3' stroke='%23090d16' stroke-width='2.6' stroke-linecap='round' fill='none'/%3E%3C/svg%3E" />
+  <link id="apple-touch-icon" rel="apple-touch-icon" href="" />
+
   <style>
     :root {
       --bg: #0b0f17;
       --card: #131a26;
       --border: #263248;
       --gold: #d4af37;
+      --gold-light: #f3d478;
       --green: #00ff87;
       --red: #ff4d4d;
       --blue: #38bdf8;
@@ -19,7 +29,40 @@
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
     body { background: var(--bg); color: var(--text); padding: 18px; display: flex; justify-content: center; }
     .wrap { width: 100%; max-width: 780px; }
-    h1 { color: var(--gold); font-size: 1.5rem; margin-bottom: 4px; }
+
+    /* Brand-Header in der App mit logo.png */
+    .brand-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: linear-gradient(135deg, #152036 0%, #0e1522 100%);
+      border: 1px solid rgba(212, 175, 55, 0.45);
+      border-radius: 14px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+    }
+    .brand-logo {
+      width: 58px;
+      height: 58px;
+      border-radius: 12px;
+      object-fit: cover;
+      border: 1.5px solid var(--gold);
+      flex-shrink: 0;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+    }
+    .brand-title {
+      color: var(--gold);
+      font-size: 1.05rem;
+      font-weight: 700;
+      line-height: 1.25;
+    }
+    .brand-sub {
+      color: var(--muted);
+      font-size: 0.8rem;
+      margin-top: 2px;
+    }
+
+    h1 { color: var(--text); font-size: 1.35rem; margin-bottom: 4px; }
     .sub { color: var(--muted); font-size: 0.88rem; margin-bottom: 18px; }
     .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 14px; }
     .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-top: 10px; }
@@ -42,13 +85,21 @@
 </head>
 <body>
   <div class="wrap">
+    <div class="brand-header">
+      <img src="./logo.png" alt="J. Schützendorf Web & Code Logo" class="brand-logo" />
+      <div>
+        <div class="brand-title">Webmanagement Jürgen Schützendorf</div>
+        <div class="brand-sub">Persönlicher Service &amp; Datenpflege · Live-Cronjob-Steuerung</div>
+      </div>
+    </div>
+
     <h1>⏱️ Bundesliga Live-Cronjobs (120 Min.)</h1>
     <div class="sub">Startet den jeweiligen Job in cron-job.org und schaltet ihn nach 120 Minuten automatisch ab.</div>
 
     <div class="card">
       <div class="bar">
-        <strong>⚙️ Worker & Job-IDs</strong>
-        <button class="btn-gold" onclick="saveConfig()">Speichern & Laden</button>
+        <strong>⚙️ Worker &amp; Job-IDs</strong>
+        <button class="btn-gold" onclick="saveConfig()">Speichern &amp; Laden</button>
       </div>
       <div style="margin-top: 10px;">
         <label>Worker-URL (cron-manager)</label>
@@ -84,6 +135,54 @@
   </div>
 
   <script>
+    // Erzeugt das JS-Timer-Icon als 180x180 PNG für den Handy-Home-Bildschirm
+    (function generateAppIcon() {
+      const canvas = document.createElement("canvas");
+      canvas.width = 180;
+      canvas.height = 180;
+      const ctx = canvas.getContext("2d");
+
+      const bgGrad = ctx.createLinearGradient(0, 0, 180, 180);
+      bgGrad.addColorStop(0, "#162238");
+      bgGrad.addColorStop(1, "#090d16");
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, 180, 180);
+
+      const goldGrad = ctx.createLinearGradient(20, 20, 160, 160);
+      goldGrad.addColorStop(0, "#f3d478");
+      goldGrad.addColorStop(1, "#b88d1e");
+
+      ctx.strokeStyle = goldGrad;
+      ctx.lineWidth = 5;
+      ctx.strokeRect(8, 8, 164, 164);
+
+      ctx.fillStyle = goldGrad;
+      ctx.font = "bold 82px Georgia, serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("JS", 90, 96);
+
+      ctx.beginPath();
+      ctx.arc(140, 42, 22, 0, Math.PI * 2);
+      ctx.fillStyle = "#00ff87";
+      ctx.fill();
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = "#090d16";
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(140, 30);
+      ctx.lineTo(140, 42);
+      ctx.lineTo(148, 47);
+      ctx.strokeStyle = "#090d16";
+      ctx.lineWidth = 3.5;
+      ctx.lineCap = "round";
+      ctx.stroke();
+
+      const appleIcon = document.getElementById("apple-touch-icon");
+      if (appleIcon) appleIcon.href = canvas.toDataURL("image/png");
+    })();
+
     const DEFAULT_WORKER = "https://cron-manager.jelenbreaker.workers.dev";
     const cfg = JSON.parse(localStorage.getItem("liga_cron_mgr_cfg") || "{}");
     document.getElementById("workerUrl").value = cfg.workerUrl || DEFAULT_WORKER;

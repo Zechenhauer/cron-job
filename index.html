@@ -67,6 +67,7 @@
     .sub { color: var(--muted); font-size: 0.88rem; margin-bottom: 18px; }
     .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 14px; }
     .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-top: 10px; }
+    .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin-top: 10px; }
     label { display: block; font-size: 0.78rem; color: var(--muted); margin-bottom: 4px; }
     input { width: 100%; background: #0b0f17; border: 1px solid var(--border); color: var(--text); padding: 8px 10px; border-radius: 8px; font-size: 0.9rem; }
     button { background: #1e293b; color: var(--text); border: 1px solid var(--border); padding: 9px 14px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.88rem; }
@@ -80,6 +81,7 @@
     .badge-on { color: var(--green); font-weight: 700; font-size: 0.82rem; }
     .badge-off { color: var(--muted); font-weight: 700; font-size: 0.82rem; }
     .timer-info { color: var(--gold); font-size: 0.82rem; margin-top: 3px; }
+    .espn-info { color: var(--blue); font-size: 0.8rem; margin-top: 3px; }
     .check-ok { color: var(--green); font-size: 0.82rem; font-weight: 600; margin-top: 3px; }
     .check-warn { color: var(--yellow); font-size: 0.82rem; font-weight: 600; margin-top: 3px; }
     .check-none { color: var(--muted); font-size: 0.82rem; margin-top: 3px; }
@@ -104,8 +106,8 @@
       </div>
     </div>
 
-    <h1>⏱️ Bundesliga Live-Cronjobs (120 Min.)</h1>
-    <div class="sub">Startet den jeweiligen Job in cron-job.org und schaltet ihn nach 120 Minuten automatisch ab.</div>
+    <h1>⏱️ Bundesliga Live-Cronjobs</h1>
+    <div class="sub">API-Live-Jobs laufen mit 120-Minuten-Auto-Aus; ESPN-Jobs laufen rein manuell ohne Timer über den Spielstatus.</div>
 
     <div class="card">
       <div class="bar">
@@ -144,12 +146,22 @@
           <input id="jobId80" placeholder="wird automatisch erkannt" />
         </div>
       </div>
+      <div class="grid-2">
+        <div>
+          <label>Job-ID ESPN 1. Bundesliga (?espn=1)</label>
+          <input id="jobIdEspn1" placeholder="wird automatisch erkannt" />
+        </div>
+        <div>
+          <label>Job-ID ESPN 2. Bundesliga (?espn=2)</label>
+          <input id="jobIdEspn2" placeholder="wird automatisch erkannt" />
+        </div>
+      </div>
       <div class="msg" id="statusMsg">Lade Status...</div>
     </div>
 
     <div class="card">
       <div class="bar" style="margin-bottom: 6px;">
-        <strong>📋 Deine 3 Live-Jobs</strong>
+        <strong>📋 Deine 3 Live-Jobs (120 Min. Auto-Aus) &amp; ESPN-Jobs</strong>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
           <button class="btn-push" onclick="sendTestPush()">📲 Test-Push</button>
           <button onclick="refreshStatus()">🔄 Aktualisieren</button>
@@ -226,13 +238,17 @@
     document.getElementById("jobId78").value = cfg.jobId78 || "";
     document.getElementById("jobId79").value = cfg.jobId79 || "";
     document.getElementById("jobId80").value = cfg.jobId80 || "";
+    document.getElementById("jobIdEspn1").value = cfg.jobIdEspn1 || "";
+    document.getElementById("jobIdEspn2").value = cfg.jobIdEspn2 || "";
 
     function getConfig() {
       return {
         workerUrl: (document.getElementById("workerUrl").value.trim() || DEFAULT_WORKER).replace(/\/+$/, ""),
         jobId78: document.getElementById("jobId78").value.trim(),
         jobId79: document.getElementById("jobId79").value.trim(),
-        jobId80: document.getElementById("jobId80").value.trim()
+        jobId80: document.getElementById("jobId80").value.trim(),
+        jobIdEspn1: document.getElementById("jobIdEspn1").value.trim(),
+        jobIdEspn2: document.getElementById("jobIdEspn2").value.trim()
       };
     }
 
@@ -372,9 +388,9 @@
       }
     }
 
-    function renderOtherJobs(allJobs, liveIdsSet) {
+    function renderOtherJobs(allJobs, managedIdsSet) {
       const container = document.getElementById("otherJobsContainer");
-      const others = (allJobs || []).filter(j => !liveIdsSet.has(String(j.jobId)));
+      const others = (allJobs || []).filter(j => !managedIdsSet.has(String(j.jobId)));
 
       if (!others.length) {
         container.innerHTML = `<div class="check-none">Keine weiteren Jobs gefunden.</div>`;
@@ -427,12 +443,22 @@
           c.jobId80 = String(matched.msv);
           document.getElementById("jobId80").value = c.jobId80;
         }
+        if (!c.jobIdEspn1 && matched.espn1) {
+          c.jobIdEspn1 = String(matched.espn1);
+          document.getElementById("jobIdEspn1").value = c.jobIdEspn1;
+        }
+        if (!c.jobIdEspn2 && matched.espn2) {
+          c.jobIdEspn2 = String(matched.espn2);
+          document.getElementById("jobIdEspn2").value = c.jobIdEspn2;
+        }
         localStorage.setItem("liga_cron_mgr_cfg", JSON.stringify(c));
 
         const targets = [
-          { label: "Live Spiele 1. Liga", id: c.jobId78 },
-          { label: "Live Spiele 2. Liga", id: c.jobId79 },
-          { label: "Live-Tore 3. Liga", id: c.jobId80 }
+          { label: "Live Spiele 1. Liga", id: c.jobId78, noTimer: false, minutes: 120 },
+          { label: "Live Spiele 2. Liga", id: c.jobId79, noTimer: false, minutes: 120 },
+          { label: "Live-Tore 3. Liga", id: c.jobId80, noTimer: false, minutes: 120 },
+          { label: "ESPN 1. Bundesliga", id: c.jobIdEspn1, noTimer: true, minutes: 0 },
+          { label: "ESPN 2. Bundesliga", id: c.jobIdEspn2, noTimer: true, minutes: 0 }
         ];
 
         const container = document.getElementById("jobsContainer");
@@ -440,15 +466,19 @@
 
         for (const t of targets) {
           const apiJob = jobs.find(j => String(j.jobId) === String(t.id));
-          const timer = timers.find(tm => String(tm.job_id) === String(t.id));
+          const timer = !t.noTimer ? timers.find(tm => String(tm.job_id) === String(t.id)) : null;
           const isEnabled = apiJob ? Boolean(apiJob.enabled) : false;
 
-          let remainingText = "";
+          let infoHtml = "";
           if (timer && timer.turn_off_at) {
             const diffMin = Math.max(0, Math.round((new Date(timer.turn_off_at).getTime() - Date.now()) / 60000));
             const endClock = new Date(timer.turn_off_at).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
-            remainingText = `<div class="timer-info">⏳ Auto-Aus um ${endClock} Uhr (noch ca. ${diffMin} Min.)</div>`;
+            infoHtml = `<div class="timer-info">⏳ Auto-Aus um ${endClock} Uhr (noch ca. ${diffMin} Min.)</div>`;
+          } else if (t.noTimer) {
+            infoHtml = `<div class="espn-info">🔄 Manueller Modus ohne Auto-Off (steuert über Spielzustand „in“)</div>`;
           }
+
+          const startBtnLabel = t.noTimer ? "▶ An" : "▶ 120 Min. an";
 
           const row = document.createElement("div");
           row.className = "job-row";
@@ -456,18 +486,18 @@
             <div>
               <div><strong>${t.label}</strong> <span style="color:var(--muted); font-size:0.8rem;">(ID: ${t.id || "nicht gefunden"})</span></div>
               <div class="${isEnabled ? "badge-on" : "badge-off"}">${isEnabled ? "🟢 AKTIV" : "⚪ INAKTIV"}</div>
-              ${remainingText}
+              ${infoHtml}
             </div>
             <div style="display:flex; gap:8px;">
-              <button class="btn-start" onclick="controlJob(${t.id || 0}, 'start', '${t.label}')">▶ 120 Min. an</button>
-              <button class="btn-stop" onclick="controlJob(${t.id || 0}, 'stop', '${t.label}')">⏹ Aus</button>
+              <button class="btn-start" onclick="controlJob(${t.id || 0}, 'start', '${t.label}', ${t.minutes}, ${t.noTimer})">${startBtnLabel}</button>
+              <button class="btn-stop" onclick="controlJob(${t.id || 0}, 'stop', '${t.label}', 0, ${t.noTimer})">⏹ Aus</button>
             </div>
           `;
           container.appendChild(row);
         }
 
-        const liveIdsSet = new Set(targets.map(t => String(t.id)).filter(Boolean));
-        renderOtherJobs(jobs, liveIdsSet);
+        const managedIdsSet = new Set(targets.map(t => String(t.id)).filter(Boolean));
+        renderOtherJobs(jobs, managedIdsSet);
 
         setMsg("Status aktualisiert: " + new Date().toLocaleTimeString("de-DE"));
       } catch (err) {
@@ -475,19 +505,24 @@
       }
     }
 
-    async function controlJob(jobId, action, label) {
+    async function controlJob(jobId, action, label, minutes = 120, noTimer = false) {
       const c = getConfig();
       if (!jobId) {
         alert("Job-ID konnte nicht automatisch erkannt werden – bitte kurz manuell eintragen.");
         return;
       }
 
-      setMsg(action === "start" ? `Starte ${label} für 120 Minuten...` : `Schalte ${label} aus...`);
+      setMsg(
+        action === "start"
+          ? (noTimer ? `Aktiviere ${label}...` : `Starte ${label} für ${minutes} Minuten...`)
+          : `Schalte ${label} aus...`
+      );
+
       try {
         const res = await fetch(c.workerUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action, jobId: Number(jobId), minutes: 120, label })
+          body: JSON.stringify({ action, jobId: Number(jobId), minutes, noTimer, label })
         });
         const out = await res.json();
         if (!res.ok) {
@@ -495,7 +530,11 @@
           return;
         }
         await refreshStatus();
-        setMsg(action === "start" ? `${label} für 120 Minuten aktiviert.` : `${label} deaktiviert.`);
+        setMsg(
+          action === "start"
+            ? (noTimer ? `${label} aktiviert (ohne Auto-Off).` : `${label} für ${minutes} Minuten aktiviert.`)
+            : `${label} deaktiviert.`
+        );
       } catch (err) {
         setMsg("Netzwerkfehler: " + err.message);
       }

@@ -22,6 +22,7 @@
       --gold-light: #f3d478;
       --green: #00ff87;
       --red: #ff4d4d;
+      --yellow: #facc15;
       --blue: #38bdf8;
       --text: #f3f6fa;
       --muted: #94a3b8;
@@ -79,6 +80,9 @@
     .badge-on { color: var(--green); font-weight: 700; font-size: 0.82rem; }
     .badge-off { color: var(--muted); font-weight: 700; font-size: 0.82rem; }
     .timer-info { color: var(--gold); font-size: 0.82rem; margin-top: 3px; }
+    .check-ok { color: var(--green); font-size: 0.82rem; font-weight: 600; margin-top: 3px; }
+    .check-warn { color: var(--yellow); font-size: 0.82rem; font-weight: 600; margin-top: 3px; }
+    .check-none { color: var(--muted); font-size: 0.82rem; margin-top: 3px; }
     .bar { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
     .msg { font-size: 0.84rem; color: var(--muted); margin-top: 8px; }
   </style>
@@ -131,6 +135,16 @@
         </div>
       </div>
       <div id="jobsContainer">Lade Jobs...</div>
+    </div>
+
+    <div class="card">
+      <div class="bar" style="margin-bottom: 6px;">
+        <strong>🕒 Weitere Cronjobs (Trigger- &amp; Zeit-Check)</strong>
+      </div>
+      <div class="sub" style="margin-bottom: 8px; font-size: 0.8rem;">
+        Prüft anhand der letzten Ausführung (Berliner Zeit) ob ein Job pünktlich zur hinterlegten Uhrzeit ausgelöst hat.
+      </div>
+      <div id="otherJobsContainer">Lade weitere Jobs...</div>
     </div>
   </div>
 
@@ -210,6 +224,68 @@
       document.getElementById("statusMsg").textContent = text;
     }
 
+    // Extrahiert z. B. "20:30" oder "22:00" aus dem Jobtitel, falls vorhanden
+    function extractTargetClock(title = "") {
+      const match = title.match(/\b([01]?\d|2[0-3]):([0-5]\d)\b/);
+      if (!match) return null;
+      return {
+        hours: Number(match[1]),
+        minutes: Number(match[2]),
+        label: `${String(match[1]).padStart(2, "0")}:${match[2]}`
+      };
+    }
+
+    // Wandelt Unix-Timestamp (Sekunden) in Berliner Zeit um und prüft Abweichung zur Soll-Zeit
+    function evaluateLastExecution(job) {
+      const ts = Number(job.lastExecution || 0);
+      if (!ts) {
+        return {
+          lastText: "Letzte Ausführung: - (noch kein Lauf)",
+          checkHtml: `<div class="check-none">⏳ Noch nicht getriggert</div>`
+        };
+      }
+
+      const dateObj = new Date(ts * 1000);
+      const formatted = dateObj.toLocaleString("de-DE", {
+        timeZone: "Europe/Berlin",
+        weekday: "short",
+        day: "2-digit",
+        month: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit"
+      });
+
+      const parts = new Intl.DateTimeFormat("de-DE", {
+        timeZone: "Europe/Berlin",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false
+      }).formatToParts(dateObj);
+
+      const actualH = Number(parts.find(p => p.type === "hour")?.value || 0);
+      const actualM = Number(parts.find(p => p.type === "minute")?.value || 0);
+      const actualTotalMin = actualH * 60 + actualM;
+
+      const target = extractTargetClock(job.title || "");
+      let checkHtml = `<div class="check-ok">✅ Letzter Lauf: ${formatted} Uhr</div>`;
+
+      if (target) {
+        const targetTotalMin = target.hours * 60 + target.minutes;
+        const diffMin = Math.abs(actualTotalMin - targetTotalMin);
+        if (diffMin <= 5) {
+          checkHtml = `<div class="check-ok">✅ Pünktlich um ~${target.label} Uhr getriggert (${formatted} Uhr)</div>`;
+        } else {
+          checkHtml = `<div class="check-warn">⚠️ Soll ${target.label} Uhr – letzter Lauf war ${formatted} Uhr (${diffMin} Min. Differenz)</div>`;
+        }
+      }
+
+      return {
+        lastText: `Letzte Ausführung: ${formatted} Uhr`,
+        checkHtml
+      };
+    }
+
     async function sendTestPush() {
       const c = getConfig();
       setMsg("Sende Test-Push an push_subscriptions_msv...");
@@ -227,6 +303,38 @@
         setMsg("Test-Push gesendet (HTTP " + out.status + ") – bitte Handy prüfen.");
       } catch (err) {
         setMsg("Netzwerkfehler beim Test-Push: " + err.message);
+      }
+    }
+
+    function renderOtherJobs(allJobs, liveIdsSet) {
+      const container = document.getElementById("otherJobsContainer");
+      const others = (allJobs || []).filter(j => !liveIdsSet.has(String(j.jobId)));
+
+      if (!others.length) {
+        container.innerHTML = `<div class="check-none">Keine weiteren Jobs gefunden.</div>`;
+        return;
+      }
+
+      container.innerHTML = "";
+      for (const j of others) {
+        const isEnabled = Boolean(j.enabled);
+        const evalRes = evaluateLastExecution(j);
+        const nextTs = Number(j.nextExecution || 0);
+        const nextText = nextTs
+          ? `Nächste Ausführung: ${new Date(nextTs * 1000).toLocaleString("de-DE", { timeZone: "Europe/Berlin", weekday: "short", hour: "2-digit", minute: "2-digit" })} Uhr`
+          : "";
+
+        const row = document.createElement("div");
+        row.className = "job-row";
+        row.innerHTML = `
+          <div>
+            <div><strong>${j.title || "Unbenannter Job"}</strong> <span style="color:var(--muted); font-size:0.78rem;">(ID: ${j.jobId})</span></div>
+            <div class="${isEnabled ? "badge-on" : "badge-off"}">${isEnabled ? "🟢 AKTIV" : "⚪ INAKTIV"}</div>
+            ${evalRes.checkHtml}
+            ${nextText ? `<div class="timer-info" style="color:var(--muted);">🗓️ ${nextText}</div>` : ""}
+          </div>
+        `;
+        container.appendChild(row);
       }
     }
 
@@ -289,6 +397,9 @@
           `;
           container.appendChild(row);
         }
+
+        const liveIdsSet = new Set(targets.map(t => String(t.id)).filter(Boolean));
+        renderOtherJobs(jobs, liveIdsSet);
 
         setMsg("Status aktualisiert: " + new Date().toLocaleTimeString("de-DE"));
       } catch (err) {

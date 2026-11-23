@@ -10,7 +10,7 @@
   <title>Cronjob-Steuerung — Webmanagement Jürgen Schützendorf</title>
 
   <!-- Handy-Icon (JS mit Timer-Badge) für Favicon & Home-Bildschirm -->
-  <link id="svg-favicon" rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Cdefs%3E%3ClinearGradient id='bg' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%23162238'/%3E%3Cstop offset='100%25' stop-color='%23090d16'/%3E%3C/linearGradient%3E%3ClinearGradient id='gold' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%23f3d478'/%3E%3Cstop offset='100%25' stop-color='%23b88d1e'/%3E%3C/linearGradient%3C/defs%3E%3Crect width='128' height='128' rx='28' fill='url(%23bg)'/%3E%3Crect x='5' y='5' width='118' height='118' rx='24' fill='none' stroke='url(%23gold)' stroke-width='3'/%3E%3Ctext x='64' y='80' text-anchor='middle' font-family='Georgia, serif' font-weight='bold' font-size='56' fill='url(%23gold)'%3EJS%3C/text%3E%3Ccircle cx='98' cy='30' r='15' fill='%2300ff87' stroke='%23090d16' stroke-width='3'/%3E%3Cpath d='M98 22v8l5 3' stroke='%23090d16' stroke-width='2.6' stroke-linecap='round' fill='none'/%3E%3C/svg%3E" />
+  <link id="svg-favicon" rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Cdefs%3E%3ClinearGradient id='bg' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%23162238'/%3E%3Cstop offset='100%25' stop-color='%23090d16'/%3E%3C/linearGradient%3E%3ClinearGradient id='gold' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%23f3d478'/%3E%3Cstop offset='100%25' stop-color='%23b88d1e'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='128' height='128' rx='28' fill='url(%23bg)'/%3E%3Crect x='5' y='5' width='118' height='118' rx='24' fill='none' stroke='url(%23gold)' stroke-width='3'/%3E%3Ctext x='64' y='80' text-anchor='middle' font-family='Georgia, serif' font-weight='bold' font-size='56' fill='url(%23gold)'%3EJS%3C/text%3E%3Ccircle cx='98' cy='30' r='15' fill='%2300ff87' stroke='%23090d16' stroke-width='3'/%3E%3Cpath d='M98 22v8l5 3' stroke='%23090d16' stroke-width='2.6' stroke-linecap='round' fill='none'/%3E%3C/svg%3E" />
   <link id="apple-touch-icon" rel="apple-touch-icon" href="" />
 
   <style>
@@ -67,7 +67,6 @@
     .sub { color: var(--muted); font-size: 0.88rem; margin-bottom: 18px; }
     .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 14px; }
     .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-top: 10px; }
-    .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin-top: 10px; }
     label { display: block; font-size: 0.78rem; color: var(--muted); margin-bottom: 4px; }
     input { width: 100%; background: #0b0f17; border: 1px solid var(--border); color: var(--text); padding: 8px 10px; border-radius: 8px; font-size: 0.9rem; }
     button { background: #1e293b; color: var(--text); border: 1px solid var(--border); padding: 9px 14px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.88rem; }
@@ -106,7 +105,7 @@
       </div>
     </div>
 
-    <h1>⏱️ Bundesliga Live-Cronjobs</h1>
+    <h1>⏱️ Bundesliga &amp; CL Live-Cronjobs</h1>
     <div class="sub">API-Live-Jobs laufen mit 120-Minuten-Auto-Aus; ESPN-Jobs laufen rein manuell ohne Timer über den Spielstatus.</div>
 
     <div class="card">
@@ -146,14 +145,18 @@
           <input id="jobId80" placeholder="wird automatisch erkannt" />
         </div>
       </div>
-      <div class="grid-2">
+      <div class="grid-3">
         <div>
           <label>Job-ID ESPN 1. Bundesliga (?espn=1)</label>
           <input id="jobIdEspn1" placeholder="wird automatisch erkannt" />
         </div>
         <div>
-          <label>Job-ID ESPN Champions League (?espn=2)</label>
+          <label>Job-ID ESPN 2. Bundesliga (?espn=2)</label>
           <input id="jobIdEspn2" placeholder="wird automatisch erkannt" />
+        </div>
+        <div>
+          <label>Job-ID ESPN Champions League (?espn=3)</label>
+          <input id="jobIdEspn3" placeholder="wird automatisch erkannt" />
         </div>
       </div>
       <div class="msg" id="statusMsg">Lade Status...</div>
@@ -161,7 +164,7 @@
 
     <div class="card">
       <div class="bar" style="margin-bottom: 6px;">
-        <strong>📋 Deine 3 Live-Jobs (120 Min. Auto-Aus) &amp; ESPN-Jobs</strong>
+        <strong>📋 Deine 3 Live-Jobs (120 Min. Auto-Aus) &amp; 3 ESPN-Jobs</strong>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
           <button class="btn-push" onclick="sendTestPush()">📲 Test-Push</button>
           <button onclick="refreshStatus()">🔄 Aktualisieren</button>
@@ -240,6 +243,7 @@
     document.getElementById("jobId80").value = cfg.jobId80 || "";
     document.getElementById("jobIdEspn1").value = cfg.jobIdEspn1 || "";
     document.getElementById("jobIdEspn2").value = cfg.jobIdEspn2 || "";
+    document.getElementById("jobIdEspn3").value = cfg.jobIdEspn3 || "";
 
     function getConfig() {
       return {
@@ -248,7 +252,8 @@
         jobId79: document.getElementById("jobId79").value.trim(),
         jobId80: document.getElementById("jobId80").value.trim(),
         jobIdEspn1: document.getElementById("jobIdEspn1").value.trim(),
-        jobIdEspn2: document.getElementById("jobIdEspn2").value.trim()
+        jobIdEspn2: document.getElementById("jobIdEspn2").value.trim(),
+        jobIdEspn3: document.getElementById("jobIdEspn3").value.trim()
       };
     }
 
@@ -451,6 +456,10 @@
           c.jobIdEspn2 = String(matched.espn2);
           document.getElementById("jobIdEspn2").value = c.jobIdEspn2;
         }
+        if (!c.jobIdEspn3 && matched.espn3) {
+          c.jobIdEspn3 = String(matched.espn3);
+          document.getElementById("jobIdEspn3").value = c.jobIdEspn3;
+        }
         localStorage.setItem("liga_cron_mgr_cfg", JSON.stringify(c));
 
         const targets = [
@@ -458,7 +467,8 @@
           { label: "Live Spiele 2. Liga", id: c.jobId79, noTimer: false, minutes: 120 },
           { label: "Live-Tore 3. Liga", id: c.jobId80, noTimer: false, minutes: 120 },
           { label: "ESPN 1. Bundesliga", id: c.jobIdEspn1, noTimer: true, minutes: 0 },
-          { label: "ESPN Champions League", id: c.jobIdEspn2, noTimer: true, minutes: 0 }
+          { label: "ESPN 2. Bundesliga", id: c.jobIdEspn2, noTimer: true, minutes: 0 },
+          { label: "ESPN Champions League", id: c.jobIdEspn3, noTimer: true, minutes: 0 }
         ];
 
         const container = document.getElementById("jobsContainer");

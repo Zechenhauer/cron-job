@@ -71,6 +71,7 @@
     input { width: 100%; background: #0b0f17; border: 1px solid var(--border); color: var(--text); padding: 8px 10px; border-radius: 8px; font-size: 0.9rem; }
     button { background: #1e293b; color: var(--text); border: 1px solid var(--border); padding: 9px 14px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.88rem; }
     button:hover { border-color: var(--gold); }
+    .btn-sm { padding: 5px 10px; font-size: 0.78rem; }
     .btn-start { background: rgba(0, 255, 135, 0.14); border-color: var(--green); color: var(--green); }
     .btn-stop { background: rgba(255, 77, 77, 0.14); border-color: var(--red); color: #ff8080; }
     .btn-gold { background: var(--gold); color: #000; border-color: var(--gold); }
@@ -92,6 +93,17 @@
     .api-sub { font-size: 0.82rem; color: var(--muted); }
     .progress-wrap { width: 100%; height: 10px; background: #0b0f17; border: 1px solid var(--border); border-radius: 999px; overflow: hidden; margin-top: 10px; }
     .progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--green), var(--gold)); transition: width 0.3s ease; }
+    .cron-counter-box {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .cron-counter-val { font-weight: 700; color: var(--blue); font-size: 0.92rem; }
   </style>
 </head>
 <body>
@@ -118,6 +130,14 @@
       </div>
       <div class="progress-wrap">
         <div class="progress-fill" id="apiProgressBar"></div>
+      </div>
+
+      <div class="cron-counter-box">
+        <div>
+          <span class="api-sub">🎛️ cron-job.org API-Calls (lokal gezählt): </span>
+          <span class="cron-counter-val" id="cronApiCounterText">0 / 100 API-Calls heute</span>
+        </div>
+        <button class="btn-sm" onclick="resetCronApiCounter()">↺ Zähler auf 0</button>
       </div>
     </div>
 
@@ -192,6 +212,8 @@
   <script>
     const API_FOOTBALL_KEY = "297322363f3bf16e1304cfb933a0c8d5";
     const API_DAILY_LIMIT = 7500;
+    const CRON_ORG_DAILY_LIMIT = 100;
+    const CRON_COUNTER_STORAGE_KEY = "liga_cron_api_counter_v1";
 
     const DEFAULT_CRON_API_KEY = "eLVTdDcXN7jt96h4Y0PqG1KQbS14jj51hQpWQmbCTb4=";
     const DEFAULT_WORKER = "https://cron-manager.jelenbreaker.workers.dev";
@@ -206,6 +228,60 @@
       espn2: `${DEFAULT_WORKER}/?espn=2`,
       espn3: `${DEFAULT_WORKER}/?espn=3`
     };
+
+    // Reset-Tag in Berliner Zeit mit Versatz um 1 Stunde (01:00 Uhr DE = 00:00 Uhr UTC)
+    function getResetDayKey() {
+      const shiftedDate = new Date(Date.now() - 60 * 60 * 1000);
+      return new Intl.DateTimeFormat("sv-SE", {
+        timeZone: "Europe/Berlin",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit"
+      }).format(shiftedDate);
+    }
+
+    function readCronCounterState() {
+      const todayKey = getResetDayKey();
+      try {
+        const raw = JSON.parse(localStorage.getItem(CRON_COUNTER_STORAGE_KEY) || "null");
+        if (!raw || raw.dayKey !== todayKey) {
+          const fresh = { dayKey: todayKey, count: 0 };
+          localStorage.setItem(CRON_COUNTER_STORAGE_KEY, JSON.stringify(fresh));
+          return fresh;
+        }
+        return { dayKey: todayKey, count: Number(raw.count) || 0 };
+      } catch (e) {
+        return { dayKey: todayKey, count: 0 };
+      }
+    }
+
+    function renderCronApiCounter() {
+      const state = readCronCounterState();
+      const el = document.getElementById("cronApiCounterText");
+      if (!el) return;
+      el.textContent = `${state.count} / ${CRON_ORG_DAILY_LIMIT} API-Calls heute`;
+      if (state.count >= CRON_ORG_DAILY_LIMIT) {
+        el.style.color = "var(--red)";
+      } else if (state.count >= 80) {
+        el.style.color = "var(--yellow)";
+      } else {
+        el.style.color = "var(--blue)";
+      }
+    }
+
+    function incrementCronApiCounter(amount = 1) {
+      const state = readCronCounterState();
+      const updated = { dayKey: state.dayKey, count: state.count + amount };
+      localStorage.setItem(CRON_COUNTER_STORAGE_KEY, JSON.stringify(updated));
+      renderCronApiCounter();
+    }
+
+    function resetCronApiCounter() {
+      const fresh = { dayKey: getResetDayKey(), count: 0 };
+      localStorage.setItem(CRON_COUNTER_STORAGE_KEY, JSON.stringify(fresh));
+      renderCronApiCounter();
+      setMsg("Lokaler cron-job.org API-Zähler auf 0 gesetzt.");
+    }
 
     (function generateAppIcon() {
       const canvas = document.createElement("canvas");
@@ -263,6 +339,7 @@
     document.getElementById("jobIdEspn1").value = cfg.jobIdEspn1 || "";
     document.getElementById("jobIdEspn2").value = cfg.jobIdEspn2 || "";
     document.getElementById("jobIdEspn3").value = cfg.jobIdEspn3 || "";
+    renderCronApiCounter();
 
     function getConfig() {
       return {
@@ -492,6 +569,7 @@
 
     async function refreshStatus() {
       const c = getConfig();
+      renderCronApiCounter();
       loadApiFootballUsage();
 
       const targets = [
@@ -545,6 +623,7 @@
       }
 
       try {
+        incrementCronApiCounter(1);
         const [jobsRes, timers] = await Promise.all([
           fetch("https://api.cron-job.org/jobs", {
             headers: { "Authorization": `Bearer ${c.cronApiKey}` }
@@ -628,6 +707,7 @@
       );
 
       try {
+        incrementCronApiCounter(1);
         const patchRes = await fetch(`https://api.cron-job.org/jobs/${Number(jobId)}`, {
           method: "PATCH",
           headers: {
@@ -641,7 +721,11 @@
 
         if (!patchRes.ok) {
           const errRaw = await patchRes.text();
-          setMsg(`Fehler von cron-job.org (HTTP ${patchRes.status}): ${errRaw || "Bitte API-Key prüfen"}`);
+          setMsg(
+            patchRes.status === 429
+              ? "Rate-Limit (HTTP 429) von cron-job.org – Tageslimit von 100 API-Calls erreicht."
+              : `Fehler von cron-job.org (HTTP ${patchRes.status}): ${errRaw || "Bitte API-Key prüfen"}`
+          );
           return;
         }
 

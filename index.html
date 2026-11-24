@@ -242,8 +242,8 @@
     document.getElementById("jobId79").value = cfg.jobId79 || "";
     document.getElementById("jobId80").value = cfg.jobId80 || "";
     document.getElementById("jobIdEspn1").value = cfg.jobIdEspn1 || "";
-    document.getElementById("jobIdEspn2").value = cfg.jobIdEspn2 || "";
-    document.getElementById("jobIdEspn3").value = cfg.jobIdEspn3 || "";
+    document.getElementById("jobIdEspn2").value = cfg.jobIdEspn2 && cfg.jobIdEspn2 !== cfg.jobIdEspn3 ? cfg.jobIdEspn2 : (cfg.jobIdEspn2 || "");
+    document.getElementById("jobIdEspn3").value = cfg.jobIdEspn3 && cfg.jobIdEspn3 !== cfg.jobIdEspn2 ? cfg.jobIdEspn3 : (cfg.jobIdEspn3 && cfg.jobIdEspn3 !== cfg.jobIdEspn2 ? cfg.jobIdEspn3 : "");
 
     function getConfig() {
       return {
@@ -452,11 +452,11 @@
           c.jobIdEspn1 = String(matched.espn1);
           document.getElementById("jobIdEspn1").value = c.jobIdEspn1;
         }
-        if (!c.jobIdEspn2 && matched.espn2) {
+        if (!c.jobIdEspn2 && matched.espn2 && String(matched.espn2) !== String(c.jobIdEspn3)) {
           c.jobIdEspn2 = String(matched.espn2);
           document.getElementById("jobIdEspn2").value = c.jobIdEspn2;
         }
-        if (!c.jobIdEspn3 && matched.espn3) {
+        if (!c.jobIdEspn3 && matched.espn3 && String(matched.espn3) !== String(c.jobIdEspn2)) {
           c.jobIdEspn3 = String(matched.espn3);
           document.getElementById("jobIdEspn3").value = c.jobIdEspn3;
         }
@@ -475,8 +475,8 @@
         container.innerHTML = "";
 
         for (const t of targets) {
-          const apiJob = jobs.find(j => String(j.jobId) === String(t.id));
-          const timer = !t.noTimer ? timers.find(tm => String(tm.job_id) === String(t.id)) : null;
+          const apiJob = t.id ? jobs.find(j => String(j.jobId) === String(t.id)) : null;
+          const timer = !t.noTimer && t.id ? timers.find(tm => String(tm.job_id) === String(t.id)) : null;
           const isEnabled = apiJob ? Boolean(apiJob.enabled) : false;
 
           let infoHtml = "";

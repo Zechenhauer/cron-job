@@ -31,7 +31,6 @@
     body { background: var(--bg); color: var(--text); padding: 18px; display: flex; justify-content: center; }
     .wrap { width: 100%; max-width: 780px; }
 
-    /* Brand-Header in der App mit logo.png */
     .brand-header {
       display: flex;
       align-items: center;
@@ -66,6 +65,7 @@
     h1 { color: var(--text); font-size: 1.35rem; margin-bottom: 4px; }
     .sub { color: var(--muted); font-size: 0.88rem; margin-bottom: 18px; }
     .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 14px; }
+    .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin-top: 10px; }
     .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-top: 10px; }
     label { display: block; font-size: 0.78rem; color: var(--muted); margin-bottom: 4px; }
     input { width: 100%; background: #0b0f17; border: 1px solid var(--border); color: var(--text); padding: 8px 10px; border-radius: 8px; font-size: 0.9rem; }
@@ -87,7 +87,6 @@
     .bar { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
     .msg { font-size: 0.84rem; color: var(--muted); margin-top: 8px; }
 
-    /* API-Kontingent-Anzeige */
     .api-stats { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
     .api-big { font-size: 1.15rem; font-weight: 700; color: var(--gold); }
     .api-sub { font-size: 0.82rem; color: var(--muted); }
@@ -106,7 +105,7 @@
     </div>
 
     <h1>⏱️ Bundesliga &amp; CL Live-Cronjobs</h1>
-    <div class="sub">API-Live-Jobs laufen mit 120-Minuten-Auto-Aus; ESPN-Jobs laufen rein manuell ohne Timer über den Spielstatus.</div>
+    <div class="sub">Direkt-Steuerung vom Handy &amp; Browser ohne Cloudflare-IP-Limit; Auto-Off läuft über Supabase.</div>
 
     <div class="card">
       <div class="bar">
@@ -124,17 +123,23 @@
 
     <div class="card">
       <div class="bar">
-        <strong>⚙️ Worker &amp; Job-IDs</strong>
+        <strong>⚙️ API-Key, Worker &amp; Job-IDs</strong>
         <button class="btn-gold" onclick="saveConfig()">Speichern &amp; Laden</button>
       </div>
-      <div style="margin-top: 10px;">
-        <label>Worker-URL (cron-manager)</label>
-        <input id="workerUrl" value="https://cron-manager.jelenbreaker.workers.dev" />
+      <div class="grid-2">
+        <div>
+          <label>cron-job.org API-Key (Direkt-Schaltung)</label>
+          <input id="cronApiKey" type="password" value="eLVTdDcXN7jt96h4Y0PqG1KQbS14jj51hQpWQmbCTb4=" />
+        </div>
+        <div>
+          <label>Worker-URL (Push &amp; Auto-Off)</label>
+          <input id="workerUrl" value="https://cron-manager.jelenbreaker.workers.dev" />
+        </div>
       </div>
       <div class="grid-3">
         <div>
           <label>Job-ID 1. Liga (?league=78)</label>
-          <input id="jobId78" placeholder="wird automatisch erkannt" />
+          <input id="jobId78" placeholder="z. B. 8923268" />
         </div>
         <div>
           <label>Job-ID 2. Liga (?league=79)</label>
@@ -188,6 +193,20 @@
     const API_FOOTBALL_KEY = "297322363f3bf16e1304cfb933a0c8d5";
     const API_DAILY_LIMIT = 7500;
 
+    const DEFAULT_CRON_API_KEY = "eLVTdDcXN7jt96h4Y0PqG1KQbS14jj51hQpWQmbCTb4=";
+    const DEFAULT_WORKER = "https://cron-manager.jelenbreaker.workers.dev";
+    const SUPABASE_URL = "https://lhusylpjnujlqomougmg.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_yXEueWILvAq-Vm2VfTuYyg_BIQeE1KK";
+
+    const TARGET_URLS = {
+      bl1: "https://bundesliga-goals-cron.jelenbreaker.workers.dev/?league=78",
+      liga2: "https://bundesliga-goals-cron.jelenbreaker.workers.dev/?league=79",
+      msv: "https://bundesliga-goals-cron.jelenbreaker.workers.dev/?league=80",
+      espn1: `${DEFAULT_WORKER}/?espn=1`,
+      espn2: `${DEFAULT_WORKER}/?espn=2`,
+      espn3: `${DEFAULT_WORKER}/?espn=3`
+    };
+
     (function generateAppIcon() {
       const canvas = document.createElement("canvas");
       canvas.width = 180;
@@ -235,18 +254,19 @@
       if (appleIcon) appleIcon.href = canvas.toDataURL("image/png");
     })();
 
-    const DEFAULT_WORKER = "https://cron-manager.jelenbreaker.workers.dev";
     const cfg = JSON.parse(localStorage.getItem("liga_cron_mgr_cfg") || "{}");
+    document.getElementById("cronApiKey").value = cfg.cronApiKey || DEFAULT_CRON_API_KEY;
     document.getElementById("workerUrl").value = cfg.workerUrl || DEFAULT_WORKER;
     document.getElementById("jobId78").value = cfg.jobId78 || "";
     document.getElementById("jobId79").value = cfg.jobId79 || "";
     document.getElementById("jobId80").value = cfg.jobId80 || "";
     document.getElementById("jobIdEspn1").value = cfg.jobIdEspn1 || "";
-    document.getElementById("jobIdEspn2").value = cfg.jobIdEspn2 && cfg.jobIdEspn2 !== cfg.jobIdEspn3 ? cfg.jobIdEspn2 : (cfg.jobIdEspn2 || "");
-    document.getElementById("jobIdEspn3").value = cfg.jobIdEspn3 && cfg.jobIdEspn3 !== cfg.jobIdEspn2 ? cfg.jobIdEspn3 : (cfg.jobIdEspn3 && cfg.jobIdEspn3 !== cfg.jobIdEspn2 ? cfg.jobIdEspn3 : "");
+    document.getElementById("jobIdEspn2").value = cfg.jobIdEspn2 || "";
+    document.getElementById("jobIdEspn3").value = cfg.jobIdEspn3 || "";
 
     function getConfig() {
       return {
+        cronApiKey: (document.getElementById("cronApiKey").value.trim() || DEFAULT_CRON_API_KEY),
         workerUrl: (document.getElementById("workerUrl").value.trim() || DEFAULT_WORKER).replace(/\/+$/, ""),
         jobId78: document.getElementById("jobId78").value.trim(),
         jobId79: document.getElementById("jobId79").value.trim(),
@@ -425,52 +445,65 @@
       }
     }
 
+    async function fetchSupabaseTimers() {
+      try {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/cron_job_timers?select=job_id,turn_off_at`, {
+          headers: {
+            "apikey": SUPABASE_ANON_KEY,
+            "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
+          }
+        });
+        if (!res.ok) return [];
+        const data = await res.json();
+        return Array.isArray(data) ? data : [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    async function upsertSupabaseTimer(jobId, label, minutes) {
+      const turnOffAt = new Date(Date.now() + Number(minutes) * 60 * 1000).toISOString();
+      await fetch(`${SUPABASE_URL}/rest/v1/cron_job_timers?on_conflict=job_id`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": SUPABASE_ANON_KEY,
+          "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+          "Prefer": "resolution=merge-duplicates,return=minimal"
+        },
+        body: JSON.stringify({
+          job_id: Number(jobId),
+          league_label: label,
+          turn_off_at: turnOffAt
+        })
+      });
+      return turnOffAt;
+    }
+
+    async function deleteSupabaseTimer(jobId) {
+      await fetch(`${SUPABASE_URL}/rest/v1/cron_job_timers?job_id=eq.${Number(jobId)}`, {
+        method: "DELETE",
+        headers: {
+          "apikey": SUPABASE_ANON_KEY,
+          "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
+        }
+      });
+    }
+
     async function refreshStatus() {
       const c = getConfig();
       loadApiFootballUsage();
 
-      try {
-        const res = await fetch(`${c.workerUrl}/?action=status`);
-        const data = await res.json();
-        const jobs = data.jobs || [];
-        const timers = data.timers || [];
-        const matched = data.matchedJobIds || {};
+      const targets = [
+        { label: "Live Spiele 1. Liga", id: c.jobId78, noTimer: false, minutes: 120 },
+        { label: "Live Spiele 2. Liga", id: c.jobId79, noTimer: false, minutes: 120 },
+        { label: "Live-Tore 3. Liga", id: c.jobId80, noTimer: false, minutes: 120 },
+        { label: "ESPN 1. Bundesliga", id: c.jobIdEspn1, noTimer: true, minutes: 0 },
+        { label: "ESPN 2. Bundesliga", id: c.jobIdEspn2, noTimer: true, minutes: 0 },
+        { label: "ESPN Champions League", id: c.jobIdEspn3, noTimer: true, minutes: 0 }
+      ];
 
-        if (!c.jobId78 && matched.bl1) {
-          c.jobId78 = String(matched.bl1);
-          document.getElementById("jobId78").value = c.jobId78;
-        }
-        if (!c.jobId79 && matched.liga2) {
-          c.jobId79 = String(matched.liga2);
-          document.getElementById("jobId79").value = c.jobId79;
-        }
-        if (!c.jobId80 && matched.msv) {
-          c.jobId80 = String(matched.msv);
-          document.getElementById("jobId80").value = c.jobId80;
-        }
-        if (!c.jobIdEspn1 && matched.espn1) {
-          c.jobIdEspn1 = String(matched.espn1);
-          document.getElementById("jobIdEspn1").value = c.jobIdEspn1;
-        }
-        if (!c.jobIdEspn2 && matched.espn2 && String(matched.espn2) !== String(c.jobIdEspn3)) {
-          c.jobIdEspn2 = String(matched.espn2);
-          document.getElementById("jobIdEspn2").value = c.jobIdEspn2;
-        }
-        if (!c.jobIdEspn3 && matched.espn3 && String(matched.espn3) !== String(c.jobIdEspn2)) {
-          c.jobIdEspn3 = String(matched.espn3);
-          document.getElementById("jobIdEspn3").value = c.jobIdEspn3;
-        }
-        localStorage.setItem("liga_cron_mgr_cfg", JSON.stringify(c));
-
-        const targets = [
-          { label: "Live Spiele 1. Liga", id: c.jobId78, noTimer: false, minutes: 120 },
-          { label: "Live Spiele 2. Liga", id: c.jobId79, noTimer: false, minutes: 120 },
-          { label: "Live-Tore 3. Liga", id: c.jobId80, noTimer: false, minutes: 120 },
-          { label: "ESPN 1. Bundesliga", id: c.jobIdEspn1, noTimer: true, minutes: 0 },
-          { label: "ESPN 2. Bundesliga", id: c.jobIdEspn2, noTimer: true, minutes: 0 },
-          { label: "ESPN Champions League", id: c.jobIdEspn3, noTimer: true, minutes: 0 }
-        ];
-
+      function renderTargets(jobs, timers, statusNote) {
         const container = document.getElementById("jobsContainer");
         container.innerHTML = "";
 
@@ -494,8 +527,8 @@
           row.className = "job-row";
           row.innerHTML = `
             <div>
-              <div><strong>${t.label}</strong> <span style="color:var(--muted); font-size:0.8rem;">(ID: ${t.id || "nicht gefunden"})</span></div>
-              <div class="${isEnabled ? "badge-on" : "badge-off"}">${isEnabled ? "🟢 AKTIV" : "⚪ INAKTIV"}</div>
+              <div><strong>${t.label}</strong> <span style="color:var(--muted); font-size:0.8rem;">(ID: ${t.id || "nicht eingetragen"})</span></div>
+              <div class="${isEnabled ? "badge-on" : "badge-off"}">${apiJob ? (isEnabled ? "🟢 AKTIV" : "⚪ INAKTIV") : "⚫ STATUS UNBEKANNT"}</div>
               ${infoHtml}
             </div>
             <div style="display:flex; gap:8px;">
@@ -508,45 +541,140 @@
 
         const managedIdsSet = new Set(targets.map(t => String(t.id)).filter(Boolean));
         renderOtherJobs(jobs, managedIdsSet);
+        setMsg(statusNote);
+      }
 
-        setMsg("Status aktualisiert: " + new Date().toLocaleTimeString("de-DE"));
+      try {
+        const [jobsRes, timers] = await Promise.all([
+          fetch("https://api.cron-job.org/jobs", {
+            headers: { "Authorization": `Bearer ${c.cronApiKey}` }
+          }),
+          fetchSupabaseTimers()
+        ]);
+
+        if (!jobsRes.ok) {
+          renderTargets(
+            [],
+            timers,
+            `⚠️ cron-job.org Status HTTP ${jobsRes.status} – Schalten über gespeicherte IDs trotzdem aktiv (${new Date().toLocaleTimeString("de-DE")})`
+          );
+          return;
+        }
+
+        const jobsData = await jobsRes.json();
+        const jobs = jobsData.jobs || [];
+
+        const matched = {
+          bl1: jobs.find(j => j.url === TARGET_URLS.bl1)?.jobId || null,
+          liga2: jobs.find(j => j.url === TARGET_URLS.liga2)?.jobId || null,
+          msv: jobs.find(j => j.url === TARGET_URLS.msv)?.jobId || null,
+          espn1: jobs.find(j => j.url === TARGET_URLS.espn1)?.jobId || null,
+          espn2: jobs.find(j => j.url === TARGET_URLS.espn2)?.jobId || null,
+          espn3: jobs.find(j => j.url === TARGET_URLS.espn3)?.jobId || null
+        };
+
+        if (!c.jobId78 && matched.bl1) {
+          c.jobId78 = String(matched.bl1);
+          document.getElementById("jobId78").value = c.jobId78;
+        }
+        if (!c.jobId79 && matched.liga2) {
+          c.jobId79 = String(matched.liga2);
+          document.getElementById("jobId79").value = c.jobId79;
+        }
+        if (!c.jobId80 && matched.msv) {
+          c.jobId80 = String(matched.msv);
+          document.getElementById("jobId80").value = c.jobId80;
+        }
+        if (!c.jobIdEspn1 && matched.espn1) {
+          c.jobIdEspn1 = String(matched.espn1);
+          document.getElementById("jobIdEspn1").value = c.jobIdEspn1;
+        }
+        if (!c.jobIdEspn2 && matched.espn2 && String(matched.espn2) !== String(matched.espn3)) {
+          c.jobIdEspn2 = String(matched.espn2);
+          document.getElementById("jobIdEspn2").value = c.jobIdEspn2;
+        }
+        if (!c.jobIdEspn3 && matched.espn3 && String(matched.espn3) !== String(matched.espn2)) {
+          c.jobIdEspn3 = String(matched.espn3);
+          document.getElementById("jobIdEspn3").value = c.jobIdEspn3;
+        }
+
+        targets[0].id = c.jobId78;
+        targets[1].id = c.jobId79;
+        targets[2].id = c.jobId80;
+        targets[3].id = c.jobIdEspn1;
+        targets[4].id = c.jobIdEspn2;
+        targets[5].id = c.jobIdEspn3;
+
+        localStorage.setItem("liga_cron_mgr_cfg", JSON.stringify(c));
+        renderTargets(jobs, timers, "Direkt-Status aktualisiert: " + new Date().toLocaleTimeString("de-DE"));
       } catch (err) {
-        setMsg("Fehler beim Laden: " + err.message);
+        const timers = await fetchSupabaseTimers();
+        renderTargets([], timers, "Hinweis: " + err.message);
       }
     }
 
     async function controlJob(jobId, action, label, minutes = 120, noTimer = false) {
       const c = getConfig();
       if (!jobId) {
-        alert("Job-ID konnte nicht automatisch erkannt werden – bitte kurz manuell eintragen.");
+        alert("Job-ID fehlt noch – bitte einmal oben eintragen und auf Speichern klicken.");
         return;
       }
 
+      const enable = action === "start";
       setMsg(
-        action === "start"
-          ? (noTimer ? `Aktiviere ${label}...` : `Starte ${label} für ${minutes} Minuten...`)
+        enable
+          ? (noTimer ? `Aktiviere ${label} direkt...` : `Starte ${label} für ${minutes} Minuten...`)
           : `Schalte ${label} aus...`
       );
 
       try {
-        const res = await fetch(c.workerUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action, jobId: Number(jobId), minutes, noTimer, label })
+        const patchRes = await fetch(`https://api.cron-job.org/jobs/${Number(jobId)}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${c.cronApiKey}`
+          },
+          body: JSON.stringify({
+            job: { enabled: enable }
+          })
         });
-        const out = await res.json();
-        if (!res.ok) {
-          setMsg("Fehler: " + (out.error || res.status));
+
+        if (!patchRes.ok) {
+          const errRaw = await patchRes.text();
+          setMsg(`Fehler von cron-job.org (HTTP ${patchRes.status}): ${errRaw || "Bitte API-Key prüfen"}`);
           return;
         }
+
+        if (enable && !noTimer && Number(minutes) > 0) {
+          await upsertSupabaseTimer(jobId, label, minutes);
+        } else if (!enable) {
+          await deleteSupabaseTimer(jobId);
+        }
+
         await refreshStatus();
         setMsg(
-          action === "start"
-            ? (noTimer ? `${label} aktiviert (ohne Auto-Off).` : `${label} für ${minutes} Minuten aktiviert.`)
+          enable
+            ? (noTimer ? `${label} direkt aktiviert (ohne Auto-Off).` : `${label} für ${minutes} Minuten aktiviert.`)
             : `${label} deaktiviert.`
         );
       } catch (err) {
-        setMsg("Netzwerkfehler: " + err.message);
+        setMsg("Direkt-Aufruf fehlgeschlagen (" + err.message + ") – versuche Worker-Fallback...");
+        try {
+          const fallbackRes = await fetch(c.workerUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action, jobId: Number(jobId), minutes, noTimer, label })
+          });
+          const out = await fallbackRes.json();
+          if (!fallbackRes.ok) {
+            setMsg("Fehler: " + (out.error || fallbackRes.status) + (out.details ? " – " + out.details : ""));
+            return;
+          }
+          await refreshStatus();
+          setMsg(enable ? `${label} aktiviert.` : `${label} deaktiviert.`);
+        } catch (fbErr) {
+          setMsg("Netzwerkfehler: " + fbErr.message);
+        }
       }
     }
 

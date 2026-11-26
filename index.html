@@ -45,8 +45,7 @@
       width: 58px;
       height: 58px;
       border-radius: 12px;
-      object-fit: cover;
-      border: 1.5px solid var(--gold);
+      display: block;
       flex-shrink: 0;
       box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
     }
@@ -109,7 +108,23 @@
 <body>
   <div class="wrap">
     <div class="brand-header">
-      <img src="./logo.png" alt="J. Schützendorf Web & Code Logo" class="brand-logo" />
+      <svg class="brand-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="JS Web & Code Logo">
+        <defs>
+          <linearGradient id="headerBgGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#162238" />
+            <stop offset="100%" stop-color="#090d16" />
+          </linearGradient>
+          <linearGradient id="headerGoldGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#f3d478" />
+            <stop offset="100%" stop-color="#b88d1e" />
+          </linearGradient>
+        </defs>
+        <rect width="128" height="128" rx="26" fill="url(#headerBgGrad)" />
+        <rect x="4" y="4" width="120" height="120" rx="22" fill="none" stroke="url(#headerGoldGrad)" stroke-width="3.5" />
+        <text x="64" y="81" text-anchor="middle" font-family="Georgia, serif" font-weight="bold" font-size="56" fill="url(#headerGoldGrad)">JS</text>
+        <circle cx="98" cy="30" r="15" fill="#00ff87" stroke="#090d16" stroke-width="3" />
+        <path d="M98 22v8l5 3" stroke="#090d16" stroke-width="2.6" stroke-linecap="round" fill="none" />
+      </svg>
       <div>
         <div class="brand-title">Webmanagement Jürgen Schützendorf</div>
         <div class="brand-sub">Persönlicher Service &amp; Datenpflege · Live-Cronjob-Steuerung</div>
@@ -184,12 +199,18 @@
           <input id="jobIdEspn3" placeholder="wird automatisch erkannt" />
         </div>
       </div>
+      <div class="grid-3">
+        <div>
+          <label>Job-ID Live Spiel Confernce Liga (?league=848)</label>
+          <input id="jobIdUecl" placeholder="wird automatisch erkannt" />
+        </div>
+      </div>
       <div class="msg" id="statusMsg">Lade Status...</div>
     </div>
 
     <div class="card">
       <div class="bar" style="margin-bottom: 6px;">
-        <strong>📋 Deine 3 Live-Jobs (120 Min. Auto-Aus) &amp; 3 ESPN-Jobs</strong>
+        <strong>📋 Deine 3 Live-Jobs (120 Min. Auto-Aus), 3 ESPN-Jobs &amp; Conference League</strong>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
           <button class="btn-push" onclick="sendTestPush()">📲 Test-Push</button>
           <button onclick="refreshStatus()">🔄 Aktualisieren</button>
@@ -226,7 +247,8 @@
       msv: "https://bundesliga-goals-cron.jelenbreaker.workers.dev/?league=80",
       espn1: `${DEFAULT_WORKER}/?espn=1`,
       espn2: `${DEFAULT_WORKER}/?espn=2`,
-      espn3: `${DEFAULT_WORKER}/?espn=3`
+      espn3: `${DEFAULT_WORKER}/?espn=3`,
+      uecl: "https://bundesliga-goals-cron.jelenbreaker.workers.dev/?league=848"
     };
 
     // Reset-Tag in Berliner Zeit mit Versatz um 1 Stunde (01:00 Uhr DE = 00:00 Uhr UTC)
@@ -339,6 +361,7 @@
     document.getElementById("jobIdEspn1").value = cfg.jobIdEspn1 || "";
     document.getElementById("jobIdEspn2").value = cfg.jobIdEspn2 || "";
     document.getElementById("jobIdEspn3").value = cfg.jobIdEspn3 || "";
+    document.getElementById("jobIdUecl").value = cfg.jobIdUecl || "";
     renderCronApiCounter();
 
     function getConfig() {
@@ -350,7 +373,8 @@
         jobId80: document.getElementById("jobId80").value.trim(),
         jobIdEspn1: document.getElementById("jobIdEspn1").value.trim(),
         jobIdEspn2: document.getElementById("jobIdEspn2").value.trim(),
-        jobIdEspn3: document.getElementById("jobIdEspn3").value.trim()
+        jobIdEspn3: document.getElementById("jobIdEspn3").value.trim(),
+        jobIdUecl: document.getElementById("jobIdUecl").value.trim()
       };
     }
 
@@ -578,7 +602,8 @@
         { label: "Live-Tore 3. Liga", id: c.jobId80, noTimer: false, minutes: 120 },
         { label: "ESPN 1. Bundesliga", id: c.jobIdEspn1, noTimer: true, minutes: 0 },
         { label: "ESPN 2. Bundesliga", id: c.jobIdEspn2, noTimer: true, minutes: 0 },
-        { label: "ESPN Champions League", id: c.jobIdEspn3, noTimer: true, minutes: 0 }
+        { label: "ESPN Champions League", id: c.jobIdEspn3, noTimer: true, minutes: 0 },
+        { label: "Live Spiel Confernce Liga", id: c.jobIdUecl, noTimer: true, minutes: 0 }
       ];
 
       function renderTargets(jobs, timers, statusNote) {
@@ -649,7 +674,8 @@
           msv: jobs.find(j => j.url === TARGET_URLS.msv)?.jobId || null,
           espn1: jobs.find(j => j.url === TARGET_URLS.espn1)?.jobId || null,
           espn2: jobs.find(j => j.url === TARGET_URLS.espn2)?.jobId || null,
-          espn3: jobs.find(j => j.url === TARGET_URLS.espn3)?.jobId || null
+          espn3: jobs.find(j => j.url === TARGET_URLS.espn3)?.jobId || null,
+          uecl: jobs.find(j => j.url === TARGET_URLS.uecl)?.jobId || null
         };
 
         if (!c.jobId78 && matched.bl1) {
@@ -676,6 +702,10 @@
           c.jobIdEspn3 = String(matched.espn3);
           document.getElementById("jobIdEspn3").value = c.jobIdEspn3;
         }
+        if (!c.jobIdUecl && matched.uecl) {
+          c.jobIdUecl = String(matched.uecl);
+          document.getElementById("jobIdUecl").value = c.jobIdUecl;
+        }
 
         targets[0].id = c.jobId78;
         targets[1].id = c.jobId79;
@@ -683,6 +713,7 @@
         targets[3].id = c.jobIdEspn1;
         targets[4].id = c.jobIdEspn2;
         targets[5].id = c.jobIdEspn3;
+        targets[6].id = c.jobIdUecl;
 
         localStorage.setItem("liga_cron_mgr_cfg", JSON.stringify(c));
         renderTargets(jobs, timers, "Direkt-Status aktualisiert: " + new Date().toLocaleTimeString("de-DE"));
